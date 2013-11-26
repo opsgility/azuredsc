@@ -1,4 +1,4 @@
-Azure DSC Pull Server BootSTrapper
+Azure DSC Pull Server BootStrapper
 
 
 This repo has a collection of PowerShell scripts that bootstrap the creation of a PowerShell Desired State Configuration Pull Server and Client into Windows Azure. 
