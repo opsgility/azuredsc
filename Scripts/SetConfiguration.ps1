@@ -13,8 +13,6 @@
  limitations under the License.
 #>
 
-Set-StrictMode -Version Latest
-
 # Get certificate previously deployed during provisioning 
 $psDscCert = Get-ChildItem CERT:\LocalMachine\MY\ | where {$_.Subject -eq "CN=PSDSCPullServerCert"}
 
