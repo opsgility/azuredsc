@@ -62,16 +62,10 @@ Function SetConfiguration
 
     $mofPath =  (Join-Path $stagingPath "$configurationId.mof")
     $mofCheckSumPath = (Join-Path $stagingPath "$configurationId.mof.checksum")
-    if((Test-Path $mofCheckSumPath) -eq $true)
-    {
-        Remove-Item $mofCheckSumPath
-    }
 
-    
-    New-Item $mofCheckSumPath -type file
-    [System.IO.File]::AppendAllText($mofCheckSumPath, (Get-FileHash ($mofPath)).Hash)
+    New-DSCCheckSum -ConfigurationPath $mofPath -OutPath $mofCheckSumPath
 
-    Write-Host "Saved checksum file $mofPath" -ForegroundColor Green
+    Write-Host "Saved checksum for file $mofCheckSumPath" -ForegroundColor Green
 
 
 }

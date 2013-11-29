@@ -12,6 +12,23 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 #>
+<#
+  .SYNOPSIS
+  This Cmdlet creates a virtual machine and bootstraps a DSC Pull Server Client.
+  It is currently only supported to deploy the client into the same cloud service as the pull server.
+
+  .DESCRIPTION
+  This Cmdlet creates a virtual machine and bootstraps a DSC Pull Server Client.
+  It is currently only supported to deploy the client into the same cloud service as the pull server.
+
+  .EXAMPLE
+
+  # No VNET
+  .\create-pull-client.ps1 -SubscriptionName opsgilitytraining -ServiceName pullsvc -Name pullclient -Size Small -ConfigurationName "WebServer" -CertificatePath .\PSDSCPullServerCert.pfx -PullServer pullsrv
+
+  # Create domain joined
+  .\create-pull-client.ps1 -SubscriptionName opsgilitytraining -ServiceName pullsvc -Name pullclient -Size Small -ConfigurationName "WebServer" -CertificatePath .\PSDSCPullServerCert.pfx -PullServer pullsrv -JoinDomain -Subnet "MYSUBNET" -DomainFQDN "mydomain.com"
+#>
 
 
 [CmdletBinding(DefaultParameterSetName="default")]
@@ -37,21 +54,17 @@ param(
   [parameter(Mandatory)]
   $ConfigurationName,
 
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [switch]$JoinVNET,
-  
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [parameter(Mandatory, ParameterSetName="JoinDomain")]
-  [string]$Subnet,
-
   [parameter(Mandatory, ParameterSetName="JoinDomain")]
   [switch]$JoinDomain,
   
   [parameter(Mandatory, ParameterSetName="JoinDomain")]
+  [string]$Subnet,
+  
+  [parameter(Mandatory, ParameterSetName="JoinDomain")]
   [string]$DomainFQDN,
   
-  [parameter(Mandatory="false", ParameterSetName="JoinDomain")]
-  [switch]$DomainOU
+  [parameter(ParameterSetName="JoinDomain")]
+  [String]$DomainOU
   
 )
 
@@ -89,8 +102,8 @@ $vmConfig = New-AzureVMConfig -Name $Name -ImageName $ImageName -InstanceSize Sm
 if($PSCmdlet.ParameterSetName -eq "JoinDomain")
 {
    $domain = $DomainFQDN.Split(".")[0]
-   $domainCredential = Get-Credential -Message "Enter Credentials to Join Domain"
-   if($DomainOU.IsPresent -eq $false)
+   $domainCredential = Get-Credential -Message "Enter Domain User Name and Password to Join Domain $domain"
+   if($DomainOU -eq $null -or $DomainOU.Length -eq 0)
    {
       $vmConfig | Add-AzureProvisioningConfig -WindowsDomain -AdminUsername $Credential.UserName -Password $credential.GetNetworkCredential().password -EnableWinRMHttp -X509Certificates $cert -JoinDomain $DomainFQDN -Domain $Domain -DomainUserName $domainCredential.UserName -DomainPassword $domainCredential.GetNetworkCredential().password 
    }

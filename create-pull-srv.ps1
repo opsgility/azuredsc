@@ -13,6 +13,22 @@
  limitations under the License.
 #>
 
+<#
+  .SYNOPSIS
+  This Cmdlet creates a virtual machine and bootstraps a DSC Pull Server
+
+  .DESCRIPTION
+  This Cmdlet creates a virtual machine and bootstraps a DSC Pull Server.
+  
+  .EXAMPLE
+
+  # No VNET
+  .\create-pull-srv.ps1 -SubscriptionName opsgilitytraining -ServiceName pullsvc -Name pullsrv -Size Small -Location "West US" 
+
+  # Create domain joined
+  .\create-pull-srv.ps1 -SubscriptionName opsgilitytraining -ServiceName pullsvc -Name pullsrv -Size Small -JoinDomain -AffinityGroup "MYAG" -VNET "MYVNET" -Subnet "MYSUBNET" -DomainFQDN "mydomain.com"
+#>
+
 [CmdletBinding(DefaultParameterSetName="default")]
 param(
   [parameter(Mandatory)]
@@ -29,30 +45,24 @@ param(
 
   [parameter(Mandatory, ParameterSetName="default")]
   [string]$Location,
-  
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [parameter(Mandatory, ParameterSetName="JoinDomain")]
-  [string]$AffinityGroup,
-
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [switch]$JoinVNET,
-  
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [parameter(Mandatory, ParameterSetName="JoinDomain")]
-  [string]$VNET,
-  
-  [parameter(Mandatory, ParameterSetName="JoinVNET")]
-  [parameter(Mandatory, ParameterSetName="JoinDomain")]
-  [string]$Subnet,
 
   [parameter(Mandatory, ParameterSetName="JoinDomain")]
   [switch]$JoinDomain,
   
   [parameter(Mandatory, ParameterSetName="JoinDomain")]
+  [string]$AffinityGroup,
+  
+  [parameter(Mandatory, ParameterSetName="JoinDomain")]
+  [string]$VNET,
+
+  [parameter(Mandatory, ParameterSetName="JoinDomain")]
+  [string]$Subnet,
+  
+  [parameter(Mandatory, ParameterSetName="JoinDomain")]
   [string]$DomainFQDN,
   
-  [parameter(Mandatory="false", ParameterSetName="JoinDomain")]
-  [switch]$DomainOU
+  [parameter(ParameterSetName="JoinDomain")]
+  [String]$DomainOU
 )
 
 Set-StrictMode -Version Latest
@@ -99,10 +109,10 @@ $vmConfig = New-AzureVMConfig -Name $Name -ImageName $ImageName -InstanceSize Sm
 if($PSCmdlet.ParameterSetName -eq "JoinDomain")
 {
    $domain = $DomainFQDN.Split(".")[0]
-   $domainCredential = Get-Credential -Message "Enter Credentials to Join Domain"
-   if($DomainOU.IsPresent -eq $false)
+   $domainCredential = Get-Credential -Message "Enter Domain User Name and Password to Join Domain $domain"
+   if($DomainOU -eq $null -or $DomainOU.Length -eq 0)
    {
-      $vmConfig | Add-AzureProvisioningConfig -WindowsDomain -AdminUsername $Credential.UserName -Password $credential.GetNetworkCredential().password -EnableWinRMHttp -X509Certificates $cert -JoinDomain $DomainFQDN -Domain $Domain -DomainUserName $domainCredential.UserName -DomainPassword $domainCredential.GetNetworkCredential().password 
+      $vmConfig | Add-AzureProvisioningConfig -WindowsDomain -AdminUsername $Credential.UserName -Password $credential.GetNetworkCredential().password -EnableWinRMHttp -X509Certificates $cert -JoinDomain $DomainFQDN -Domain $Domain -DomainUserName $domainCredential.UserName -DomainPassword $domainCredential.GetNetworkCredential().password
    }
    else
    {
@@ -117,13 +127,13 @@ else
 if($PSCmdlet.ParameterSetName -eq "default")
 {
     Write-Host "Deploying Virtual Machine in $Location" -ForegroundColor Green
-    New-AzureVM -ServiceName $ServiceName -Location $Location -VMs $vmConfig -WaitForBoot
+    New-AzureVM -ServiceName $ServiceName -Location $Location -VMs $vmConfig -WaitForBoot 
 }
 else
 {
     Write-Host "Deploying Virtual Machine in AffinityGroup: $AffinityGroup and Virtual Network: $VNET" -ForegroundColor Green
     $vmConfig | Set-AzureSubnet -SubnetName $Subnet
-    New-AzureVM -ServiceName $ServiceName -AffinityGroup $AffinityGroup -VNetName $VNET -VMs $vmConfig -WaitForBoot
+    New-AzureVM -ServiceName $ServiceName -AffinityGroup $AffinityGroup -VNetName $VNET -VMs $vmConfig -WaitForBoot 
 }
 
 Write-Host "Downloading and installing WinRM Certificate for secure communications" -ForegroundColor Green
